@@ -1,39 +1,83 @@
+using Ebanx.Challenge.Application;
+using Ebanx.Challenge.Infrastructure;
+
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddSingleton<IAccountStore, InMemoryAccountStore>();
+builder.Services.AddSingleton<IAccountService, AccountService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+app.MapPost("/reset", (IAccountService svc) =>
 {
-    app.MapOpenApi();
-}
+    svc.Reset();
+    return Results.Ok();
+});
 
-var summaries = new[]
+app.MapGet("/balance", (string accountId, IAccountService svc) =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    var bal = svc.GetBalance(accountId);
+    return bal is null ? Results.NotFound("0") : Results.Text(bal.Value.ToString());
+});
 
-app.MapGet("/weatherforecast", () =>
+app.MapPost("/event", async (HttpContext ctx, IAccountService svc) =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+    var req = await ctx.Request.ReadFromJsonAsync<EventRequest>();
+    if (req is null) return Results.BadRequest();
+
+    switch (req.Type)
+    {
+        case "deposit":
+            if (string.IsNullOrWhiteSpace(req.Destination) || req.Amount is null)
+                return Results.BadRequest();
+
+            var (destAccount, _) = svc.Deposit(req.Destination, req.Amount.Value);
+            return Results.Created("/balance", new
+            {
+                destination = new { id = destAccount.Id, balance = destAccount.Balance }
+            });
+
+        case "withdraw":
+            if (string.IsNullOrWhiteSpace(req.Origin) || req.Amount is null)
+                return Results.BadRequest();
+
+            var withdrawResult = svc.Withdraw(req.Origin, req.Amount.Value);
+            if (withdrawResult is null)
+                return Results.NotFound("0");
+
+            var (originAccount, _) = withdrawResult.Value;
+            return Results.Created("/balance", new
+            {
+                origin = new { id = originAccount.Id, balance = originAccount.Balance }
+            });
+
+        case "transfer":
+            if (string.IsNullOrWhiteSpace(req.Origin) || string.IsNullOrWhiteSpace(req.Destination) || req.Amount is null)
+                return Results.BadRequest();
+
+            var transferResult = svc.Transfer(req.Origin, req.Destination, req.Amount.Value);
+            if (transferResult is null)
+                return Results.NotFound("0");
+
+            var (fromAcc, toAcc, _) = transferResult.Value;
+            return Results.Created("/balance", new
+            {
+                origin = new { id = fromAcc.Id, balance = fromAcc.Balance },
+                destination = new { id = toAcc.Id, balance = toAcc.Balance }
+            });
+
+        default:
+            return Results.BadRequest();
+    }
+});
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+record EventRequest
 {
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    public string Type { get; init; } = null!;
+    public string? Origin { get; init; }
+    public string? Destination { get; init; }
+    public int? Amount { get; init; }
 }

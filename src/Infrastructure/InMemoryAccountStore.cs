@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using Ebanx.Challenge.Application;
 using Ebanx.Challenge.Domain;
 
-namespace DefaultNamespace;
+namespace Ebanx.Challenge.Infrastructure;
 
 public sealed class InMemoryAccountStore : IAccountStore
 {
