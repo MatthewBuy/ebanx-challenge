@@ -23,7 +23,7 @@ public sealed class Account
     public bool TryWithdraw(int amount)
     {
         if (amount <= 0) throw new ArgumentOutOfRangeException(nameof(amount), "Withdrawal amount must be positive.");
-        if (Balance < amount) return false; // Insufficient funds
+        if (Balance < amount) return false;
         Balance -= amount;
         return true;
     }
