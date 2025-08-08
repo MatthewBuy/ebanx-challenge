@@ -33,7 +33,8 @@ app.MapPost("/event", (EventRequest req, IAccountService svc) =>
             if (string.IsNullOrWhiteSpace(req.Destination) || req.Amount is null)
                 return Results.BadRequest();
 
-            var (destAccount, _) = svc.Deposit(req.Destination!, req.Amount!.Value);
+            var (destAccount, created) = svc.Deposit(req.Destination!, req.Amount!.Value);
+            // Se a conta não existir, ela deve ser criada com o saldo inicial
             if (destAccount is null)
                 return Results.Text("0", "text/plain", statusCode: 404);
             return Results.Created("/balance", new

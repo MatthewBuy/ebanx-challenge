@@ -15,12 +15,15 @@ public sealed class AccountService(IAccountStore store) : IAccountService
         var account = store.Get(accountId);
         if (account == null)
         {
-            return (null, false);
+            // Cria a conta com o saldo inicial
+            var newAccount = new Domain.Account(accountId, amount);
+            store.Upsert(newAccount);
+            return (newAccount, true);
         }
 
         account.Balance += amount;
         store.Upsert(account);
-        return (account, true);
+        return (account, false);
     }
 
     public (Account? Origin, bool Ok)? Withdraw(string originId, int amount)
@@ -38,13 +41,16 @@ public sealed class AccountService(IAccountStore store) : IAccountService
     public (Account? Origin, Account? Destination, bool Ok)? Transfer(string originId, string destinationId, int amount)
     {
         var origin = store.Get(originId);
-        var destination = store.Get(destinationId);
-
-        if (origin == null || destination == null || !origin.TryWithdraw(amount))
+        if (origin == null || !origin.TryWithdraw(amount))
         {
             return null;
         }
 
+        var destination = store.Get(destinationId);
+        if (destination == null)
+        {
+            destination = new Domain.Account(destinationId, 0);
+        }
         destination.Balance += amount;
         store.Upsert(origin);
         store.Upsert(destination);
