@@ -1,5 +1,6 @@
 using Ebanx.Challenge.Application;
 using Ebanx.Challenge.Infrastructure;
+using Microsoft.AspNetCore.Mvc;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,9 +16,9 @@ app.MapPost("/reset", (IAccountService svc) =>
     return Results.Ok();
 });
 
-app.MapGet("/balance", (string accountId, IAccountService svc) =>
+app.MapGet("/balance", ([FromQuery(Name = "account_id")] string account_id, IAccountService svc) =>
 {
-    var bal = svc.GetBalance(accountId);
+    var bal = svc.GetBalance(account_id);
     return bal is null ? Results.NotFound("0") : Results.Text(bal.Value.ToString());
 });
 
