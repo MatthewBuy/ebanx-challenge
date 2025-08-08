@@ -1,5 +1,4 @@
-﻿namespace Ebanx.Challenge.Infrasctructure;
-
+﻿namespace Ebanx.Challenge.Infrastructure;
 public class Class1
 {
 

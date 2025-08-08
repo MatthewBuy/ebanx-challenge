@@ -12,7 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Application\Ebanx.Challenge.Application.csproj" />
-    <ProjectReference Include="..\Infrastructure\Ebanx.Challenge.Infrasctructure.csproj" />
+    <ProjectReference Include="..\Infrastructure\Ebanx.Challenge.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
