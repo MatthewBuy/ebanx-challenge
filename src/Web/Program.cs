@@ -13,19 +13,19 @@ var app = builder.Build();
 app.MapPost("/reset", (IAccountService svc) =>
 {
     svc.Reset();
-    return Results.Ok();
+    return Results.Text("OK", "text/plain");
 });
 
 app.MapGet("/balance", ([FromQuery(Name = "account_id")] string account_id, IAccountService svc) =>
 {
     var bal = svc.GetBalance(account_id);
-    return bal is null ? Results.NotFound("0") : Results.Text(bal.Value.ToString());
+    return bal is null ? Results.Text("0", "text/plain", statusCode: 404) : Results.Text(bal.Value.ToString());
 });
 
-app.MapPost("/event", async (HttpContext ctx, IAccountService svc) =>
+app.MapPost("/event", (EventRequest req, IAccountService svc) =>
 {
-    var req = await ctx.Request.ReadFromJsonAsync<EventRequest>();
-    if (req is null) return Results.BadRequest();
+    if (req is null || string.IsNullOrWhiteSpace(req.Type))
+        return Results.BadRequest();
 
     switch (req.Type)
     {
@@ -33,7 +33,9 @@ app.MapPost("/event", async (HttpContext ctx, IAccountService svc) =>
             if (string.IsNullOrWhiteSpace(req.Destination) || req.Amount is null)
                 return Results.BadRequest();
 
-            var (destAccount, _) = svc.Deposit(req.Destination, req.Amount.Value);
+            var (destAccount, _) = svc.Deposit(req.Destination!, req.Amount!.Value);
+            if (destAccount is null)
+                return Results.Text("0", "text/plain", statusCode: 404);
             return Results.Created("/balance", new
             {
                 destination = new { id = destAccount.Id, balance = destAccount.Balance }
@@ -43,9 +45,9 @@ app.MapPost("/event", async (HttpContext ctx, IAccountService svc) =>
             if (string.IsNullOrWhiteSpace(req.Origin) || req.Amount is null)
                 return Results.BadRequest();
 
-            var withdrawResult = svc.Withdraw(req.Origin, req.Amount.Value);
+            var withdrawResult = svc.Withdraw(req.Origin!, req.Amount!.Value);
             if (withdrawResult is null)
-                return Results.NotFound("0");
+                return Results.Text("0", "text/plain", statusCode: 404);
 
             var (originAccount, _) = withdrawResult.Value;
             return Results.Created("/balance", new
@@ -57,9 +59,9 @@ app.MapPost("/event", async (HttpContext ctx, IAccountService svc) =>
             if (string.IsNullOrWhiteSpace(req.Origin) || string.IsNullOrWhiteSpace(req.Destination) || req.Amount is null)
                 return Results.BadRequest();
 
-            var transferResult = svc.Transfer(req.Origin, req.Destination, req.Amount.Value);
+            var transferResult = svc.Transfer(req.Origin!, req.Destination!, req.Amount!.Value);
             if (transferResult is null)
-                return Results.NotFound("0");
+                return Results.Text("0", "text/plain", statusCode: 404);
 
             var (fromAcc, toAcc, _) = transferResult.Value;
             return Results.Created("/balance", new
