@@ -1,10 +1,10 @@
-namespace DefaultNamespace;
+namespace Ebanx.Challenge.Domain;
 
 public sealed class Account
 {
     public string Id { get; }
-    public int Balance { get; private set; }
-    
+    public int Balance { get; set; }
+
     public Account(string id, int initialBalance)
     {
         if (string.IsNullOrWhiteSpace(id))
@@ -13,13 +13,13 @@ public sealed class Account
         Id = id;
         Balance = initialBalance;
     }
-    
+
     public void Deposit(int amount)
     {
         if (amount <= 0) throw new ArgumentOutOfRangeException(nameof(amount), "Deposit amount must be positive.");
         Balance += amount;
     }
-    
+
     public bool TryWithdraw(int amount)
     {
         if (amount <= 0) throw new ArgumentOutOfRangeException(nameof(amount), "Withdrawal amount must be positive.");
@@ -27,5 +27,5 @@ public sealed class Account
         Balance -= amount;
         return true;
     }
-    
+
 }
